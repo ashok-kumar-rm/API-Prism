@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apitest.apiprism.enums.RestMethod;
 
 import java.util.Map;
 
@@ -24,11 +25,4 @@ public class InputPayload {
     @JsonProperty("payload")
     private Map<String,Object> payload;
 
-}
-
-enum RestMethod{
-    GET,
-    POST,
-    PUT,
-    DELETE
 }

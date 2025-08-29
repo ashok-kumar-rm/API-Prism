@@ -1,6 +1,5 @@
 package org.apitest.apiprism.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,24 +9,27 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ *
+ */
+
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/rest")
 @RequiredArgsConstructor
 @Slf4j
 public class ApiPrismController {
 
     private final ApiPrismInterface apiPrismService;
 
-    @GetMapping("/prism")
-    public String index() {
-        return apiPrismService.index();
-    }
-
+    /**
+     * Api used to invoke Rest APIs
+     * @param inputPayload {@link InputPayload}
+     * @return Response Object {@link ResponseEntity<Object>}
+     */
     @PostMapping("/test")
-    public ResponseEntity<Object> test(@Valid @RequestBody InputPayload inputPayload){
+    public ResponseEntity<Object> makeCall(@Valid @RequestBody final InputPayload inputPayload){
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            Object response = objectMapper.writeValueAsString(apiPrismService.makeRestCall(inputPayload));
+            Object response = apiPrismService.makeRestCall(inputPayload);
             log.info("Tested Successfully");
             return new ResponseEntity<>(response, HttpStatus.OK);
         }catch (Exception e){
