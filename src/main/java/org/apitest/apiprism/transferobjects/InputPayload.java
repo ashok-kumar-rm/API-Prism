@@ -18,11 +18,17 @@ public class InputPayload {
     @NotBlank(message = "Api Uri cannot be empty")
     private String uri;
 
-    @JsonProperty("method")
-    @NotBlank(message = "Method cannot be empty")
-    private String method;
+    @JsonProperty(value = "method", defaultValue = "GET")
+    private RestMethod method;
 
     @JsonProperty("payload")
     private Map<String,Object> payload;
 
+}
+
+enum RestMethod{
+    GET,
+    POST,
+    PUT,
+    DELETE
 }

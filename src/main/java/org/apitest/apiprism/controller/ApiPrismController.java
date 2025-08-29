@@ -24,10 +24,10 @@ public class ApiPrismController {
     }
 
     @PostMapping("/test")
-    public ResponseEntity<String> test(@Valid @RequestBody InputPayload inputPayload){
+    public ResponseEntity<Object> test(@Valid @RequestBody InputPayload inputPayload){
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            String response = objectMapper.writeValueAsString(apiPrismService.index());
+            Object response = objectMapper.writeValueAsString(apiPrismService.makeRestCall(inputPayload));
             log.info("Tested Successfully");
             return new ResponseEntity<>(response, HttpStatus.OK);
         }catch (Exception e){

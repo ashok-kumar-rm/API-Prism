@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 @Component
-public class CustomClient {
+public class RestClient {
 
     private RequestConfig getRequestConfig() {
         return RequestConfig.custom().setConnectTimeout(30*1000).build();
