@@ -18,6 +18,7 @@ public class ApiPrismService implements ApiPrismInterface {
     private final RestInvocationHelper restInvocationHelper;
 
     /**
+     * Method to Call REST APIs
      *
      * @param inputPayload {@link InputPayload}
      * @return Response Object {@link Object}
@@ -31,4 +32,6 @@ public class ApiPrismService implements ApiPrismInterface {
             case RestMethod.DELETE -> restInvocationHelper.deleteCall(inputPayload);
         };
     }
+
+    //TODO Implementation of other APIs
 }

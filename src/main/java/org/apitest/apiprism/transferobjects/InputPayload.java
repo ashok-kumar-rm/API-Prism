@@ -26,6 +26,6 @@ public class InputPayload {
     private Map<String,Object> payload;
 
     @JsonProperty("noOfHits")
-    private long noOfHits = 1;
+    private int noOfHits = 1;
 
 }

@@ -1,13 +1,9 @@
 package org.apitest.apiprism.rest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apitest.apiprism.httpclient.RestClient;
+import lombok.extern.slf4j.Slf4j;
+import org.apitest.apiprism.enums.RestMethod;
+import org.apitest.apiprism.executor.RestExecutor;
 import org.apitest.apiprism.transferobjects.InputPayload;
 import org.apitest.apiprism.transferobjects.PrismResponse;
 import org.apitest.apiprism.transferobjects.ResponseDatum;
@@ -16,57 +12,54 @@ import org.springframework.stereotype.Component;
 import java.net.InetAddress;
 import java.net.URI;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ *
+ */
+
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RestInvocationHelper {
 
-    private final RestClient restClient;
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestExecutor restExecutor;
 
-    public Object getCall(final InputPayload inputPayload){
-        try(CloseableHttpClient httpClient = restClient.customClient()){
-            HttpGet httpGet = new HttpGet(inputPayload.getUri());
-
-            httpGet.setHeader("Accept", "application/json");
-            httpGet.setHeader("User-Agent", "Java-Client");
-            HttpResponse response = httpClient.execute(httpGet);
-
-            return restClient.readResponse(response);
-        } catch (Exception e){
-            return e.getMessage();
-        }
-    }
-    public PrismResponse postCall(final InputPayload inputPayload){
-        try(CloseableHttpClient httpClient = restClient.customClient()){
-            StringEntity entity = new StringEntity(objectMapper.writeValueAsString(inputPayload.getPayload()));
-            HttpPost httpPost = new HttpPost(inputPayload.getUri());
-            httpPost.setHeader("User-Agent", "Java-Client");
-            httpPost.setHeader("Content-Type","application/json");
-            httpPost.setEntity(entity);
-            List<ResponseDatum> responseLines = new ArrayList<>();
-            for(int i=0;i<inputPayload.getNoOfHits();i++) {
-                long startTime = System.currentTimeMillis();
-                HttpResponse response = httpClient.execute(httpPost);
-                long endTime = System.currentTimeMillis();
-                responseLines.add(ResponseDatum.builder()
-                        .status(response.getStatusLine())
-                        .responseData(restClient.readResponse(response))
-                        .responseTimeMs(endTime - startTime)
-                        .responseHeaders(response.getAllHeaders())
-                        .build());
+    /**
+     * Method to create Thread Pool to execute GET API in multi-thread
+     *
+     * @param inputPayload {@link InputPayload}
+     * @return {@link PrismResponse}
+     */
+    public PrismResponse getCall(final InputPayload inputPayload) {
+        log.info("Input payload : {} for GET API", inputPayload.toString());
+        List<ResponseDatum> responseLines = new ArrayList<>();
+        try (ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(5, 10, 5, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1000)) {{
+            allowCoreThreadTimeOut(true);
+        }}) {
+            CountDownLatch countDownLatch = new CountDownLatch(inputPayload.getNoOfHits());
+            long start = System.currentTimeMillis();
+            for (int i = 0; i < inputPayload.getNoOfHits(); i++) {
+                threadPoolExecutor.execute(() -> responseLines.add(restExecutor.executeGetApi(inputPayload, countDownLatch)));
             }
-
+            try {
+                countDownLatch.await();
+            } catch (InterruptedException e) {
+                log.error("Error in count down latch of get call, ERROR : {}", e.getMessage());
+            }
+            long end = System.currentTimeMillis();
             return PrismResponse.builder()
                     .uri(inputPayload.getUri())
                     .protocol("REST")
-                    .method("POST")
-                    .requestHeaders(httpPost.getAllHeaders())
+                    .method(RestMethod.GET.name())
                     .responseLines(responseLines)
+                    .totalExecutionTimeMs(end - start)
                     .hostDetails(getHostDetails(inputPayload.getUri())).build();
-        } catch (Exception e){
-
+        } catch (Exception e) {
             return PrismResponse.builder()
                     .uri(inputPayload.getUri())
                     .responseLines(List.of(ResponseDatum.builder().responseData(e.getMessage()).build()))
@@ -74,15 +67,54 @@ public class RestInvocationHelper {
         }
     }
 
-    public Object deleteCall(final InputPayload inputPayload){
+    /**
+     * Method to create Thread Pool to execute POST API in multi-thread
+     *
+     * @param inputPayload {@link InputPayload}
+     * @return {@link PrismResponse}
+     */
+    public PrismResponse postCall(final InputPayload inputPayload) {
+        log.info("Input payload : {} for POST API", inputPayload.toString());
+        List<ResponseDatum> responseLines = new ArrayList<>();
+        try (ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(5, 10, 5, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1000)) {{
+            allowCoreThreadTimeOut(true);
+        }}) {
+            CountDownLatch countDownLatch = new CountDownLatch(inputPayload.getNoOfHits());
+            long start = System.currentTimeMillis();
+            for (int i = 0; i < inputPayload.getNoOfHits(); i++) {
+                threadPoolExecutor.execute(() -> responseLines.add(restExecutor.executePostApi(inputPayload, countDownLatch)));
+            }
+            try {
+                countDownLatch.await();
+            } catch (InterruptedException e) {
+                log.error("Error in count down latch of post call, ERROR : {}", e.getMessage());
+            }
+            long end = System.currentTimeMillis();
+            return PrismResponse.builder()
+                    .uri(inputPayload.getUri())
+                    .protocol("REST")
+                    .method(RestMethod.POST.name())
+//                    .requestHeaders(httpPost.getAllHeaders())
+                    .responseLines(responseLines)
+                    .totalExecutionTimeMs(end - start)
+                    .hostDetails(getHostDetails(inputPayload.getUri())).build();
+        } catch (Exception e) {
+            return PrismResponse.builder()
+                    .uri(inputPayload.getUri())
+                    .responseLines(List.of(ResponseDatum.builder().responseData(e.getMessage()).build()))
+                    .hostDetails(getHostDetails(inputPayload.getUri())).build();
+        }
+    }
+
+    public Object deleteCall(final InputPayload inputPayload) {
         return null;
     }
 
-    public Object putCall(final InputPayload payload){
+    public Object putCall(final InputPayload payload) {
         return null;
     }
 
-    public static Map<String, Object> getHostDetails(final String uriString){
+    private static Map<String, Object> getHostDetails(final String uriString) {
         Map<String, Object> hostDetails = new HashMap<>();
         try {
             URI uri = URI.create(uriString);
@@ -98,7 +130,7 @@ public class RestInvocationHelper {
             // Get the fully qualified domain name
             String canonicalHostname = inetAddresses[0].getCanonicalHostName();
             hostDetails.put("canonicalHostName", canonicalHostname);
-        }  catch (Exception e){
+        } catch (Exception e) {
             hostDetails.put("errorMessage", e.getMessage());
         }
         return hostDetails;
