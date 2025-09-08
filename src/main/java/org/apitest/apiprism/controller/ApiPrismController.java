@@ -1,5 +1,6 @@
 package org.apitest.apiprism.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,8 @@ public class ApiPrismController {
      * @return Response Object {@link ResponseEntity<Object>}
      */
     @PostMapping("/test")
-    public ResponseEntity<Object> makeCall(@Valid @RequestBody final InputPayload inputPayload){
+    public ResponseEntity<Object> makeCall(@Valid @RequestBody final InputPayload inputPayload,
+                                           HttpServletRequest request) {
         try {
             Object response = apiPrismService.makeRestCall(inputPayload);
             log.info("Tested Successfully");

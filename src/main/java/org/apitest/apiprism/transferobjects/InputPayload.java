@@ -19,10 +19,13 @@ public class InputPayload {
     @NotBlank(message = "Api Uri cannot be empty")
     private String uri;
 
-    @JsonProperty(value = "method", defaultValue = "GET")
-    private RestMethod method;
+    @JsonProperty(value = "method")
+    private RestMethod method = RestMethod.GET;
 
     @JsonProperty("payload")
     private Map<String,Object> payload;
+
+    @JsonProperty("noOfHits")
+    private long noOfHits = 1;
 
 }
